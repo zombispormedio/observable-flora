@@ -1,0 +1,27 @@
+receivers:
+  otlp:
+    protocols:
+      grpc: # on port 4317
+      http: # on port 4318
+        cors:
+          allowed_origins: http://localhost:5173
+
+processors:
+  batch:
+
+exporters:
+  otlp:
+    endpoint: "api.honeycomb.io:443"
+    headers:
+      "x-honeycomb-team":  "${HONEYCOMB_TEAM}"
+
+extensions:
+  health_check:
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp]

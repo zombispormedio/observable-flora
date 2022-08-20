@@ -1,0 +1,18 @@
+version: "3"
+services:
+  opentelemetry-collector-contrib:
+    image: otel/opentelemetry-collector-contrib:0.58.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    environment:
+      - HONEYCOMB_TEAM=${HONEYCOMB_TEAM}
+    ports:
+      - "13133:13133" # health_check extension
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+
+  mongo:
+    image: mongo:5.0
+    ports:
+       - 27017:27017
