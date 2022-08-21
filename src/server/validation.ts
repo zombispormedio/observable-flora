@@ -17,7 +17,7 @@ const PlantCreateInputSchema = {
       type: "string",
       format: "uri",
       minLength: 1,
-      maxLength: 255,
+      maxLength: 1000,
     },
   },
   required: ["name", "imageUrl"],

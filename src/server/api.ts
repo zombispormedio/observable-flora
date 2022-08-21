@@ -72,9 +72,7 @@ router
       return res.status(404).end();
     }
 
-    res.status(200).json({
-      plant,
-    });
+    res.status(200).json(plant);
   })
   .delete(async (req, res) => {
     const { id } = req.params;

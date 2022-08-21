@@ -55,7 +55,7 @@ export const getPlantById = async (plantId: string) => {
   return database.client
     .db()
     .collection<PlantDocument>("plants")
-    .find({ _id: new ObjectId(plantId) });
+    .findOne({ _id: new ObjectId(plantId) });
 };
 
 export const deletePlantById = async (plantId: string) => {

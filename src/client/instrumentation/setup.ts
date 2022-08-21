@@ -20,7 +20,7 @@ const provider = new WebTracerProvider({
   }),
 });
 
-provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+// provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
 
 provider.addSpanProcessor(
   new SimpleSpanProcessor(
@@ -36,20 +36,14 @@ registerInstrumentations({
   instrumentations: [
     new UserInteractionInstrumentation({
       shouldPreventSpanCreation: (eventType, element, span) => {
-        const shouldPrevent =
-          element.getAttribute("data-traceable") !== "true" &&
-          element.onclick === null;
-
-        if (!shouldPrevent) {
-          span.setAttribute("target_element_class_name", element.className);
-          span.setAttribute("target_element_id", element.id);
-          const testId = element.getAttribute("data-testid");
-          if (testId) {
-            span.setAttribute("target_element_testid", testId);
-          }
+        span.setAttribute("target_element_class_name", element.className);
+        span.setAttribute("target_element_id", element.id);
+        const testId = element.getAttribute("data-testid");
+        if (testId) {
+          span.setAttribute("target_element_testid", testId);
         }
 
-        return shouldPrevent;
+        return false;
       },
     }),
     new FetchInstrumentation({

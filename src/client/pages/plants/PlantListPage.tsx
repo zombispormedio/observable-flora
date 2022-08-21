@@ -1,64 +1,63 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useFormik } from "formik";
+import { useEffect, useState } from "react";
 import { TrashIcon } from "@heroicons/react/solid";
 import {
   useTracedMutation,
   useTracedQuery,
 } from "../../instrumentation/react-query";
-import React, { useState } from "react";
 import classNames from "classnames";
-
-const createPlant = (params: { name: string; imageUrl: string }) => {
-  return fetch("/api/plants", {
-    method: "POST",
-    body: JSON.stringify(params),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-};
-
-const deletePlant = (id: string) => {
-  return fetch(`/api/plants/${id}`, {
-    method: "DELETE",
-  });
-};
-
-const limit = 6;
-
-const getPlants = ({ offset }: { offset: number }) => {
-  return fetch(`/api/plants?limit=${limit}&offset=${offset}`).then((res) =>
-    res.json()
-  );
-};
+import { PAGINATION_PAGE_SIZE } from "../../contants";
+import {
+  createPlant,
+  deletePlant,
+  getPlants,
+  getPlantsCount,
+} from "../../services";
+import { Link, useSearchParams } from "react-router-dom";
 
 export const PlantListPage = () => {
   const queryClient = useQueryClient();
 
-  const [offset, setOffset] = useState(0);
-
-  const { data } = useTracedQuery<{
-    items: { id: string; name: string; imageUrl: string }[];
-  }>(["plants", { offset, limit }], () => getPlants({ offset }));
+  const [searchParams, setSearchParams] = useSearchParams({ offset: "0" });
+  const offset = Number(searchParams.get("offset"));
 
   const { data: countData } = useTracedQuery<{
     count: number;
-  }>(["plantsCount"], () =>
-    fetch("/api/plants/count").then((res) => res.json())
+  }>(["plants.count"], getPlantsCount);
+
+  const plantsCount = countData?.count ?? 0;
+
+  useEffect(() => {
+    if (offset > plantsCount || offset % PAGINATION_PAGE_SIZE !== 0) {
+      setSearchParams({ offset: "0" });
+    }
+  }, [offset, plantsCount]);
+
+  const { data } = useTracedQuery<{
+    items: { id: string; name: string; imageUrl: string }[];
+  }>(
+    ["plants", { offset, limit: PAGINATION_PAGE_SIZE }],
+    () => getPlants({ offset }),
+    {
+      enabled:
+        plantsCount > 0 &&
+        offset < plantsCount &&
+        offset % PAGINATION_PAGE_SIZE === 0,
+    }
   );
 
   const { mutate: createPlantMutate } = useTracedMutation(createPlant, {
     onSuccess: () => {
       queryClient.invalidateQueries(["plants"]);
-      queryClient.invalidateQueries(["plantsCount"]);
+      queryClient.invalidateQueries(["plants.count"]);
     },
   });
 
   const { mutate: deletePlantMutate } = useTracedMutation(deletePlant, {
     onSuccess: () => {
-      console.log("deleted");
       queryClient.invalidateQueries(["plants"]);
-      queryClient.invalidateQueries(["plantsCount"]);
+      queryClient.invalidateQueries(["plants.count"]);
     },
   });
 
@@ -72,6 +71,20 @@ export const PlantListPage = () => {
       createPlantMutate(values);
     },
   });
+
+  const nextPage = () => {
+    const nextOffset = offset + PAGINATION_PAGE_SIZE;
+    if (nextOffset < plantsCount) {
+      setSearchParams({ offset: String(offset + PAGINATION_PAGE_SIZE) });
+    }
+  };
+
+  const previousPage = () => {
+    const previousOffset = offset - PAGINATION_PAGE_SIZE;
+    if (previousOffset >= 0) {
+      setSearchParams({ offset: String(offset - PAGINATION_PAGE_SIZE) });
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 m-5 mr-8 gap-10">
@@ -124,19 +137,21 @@ export const PlantListPage = () => {
         </div>
       </div>
       <div className="lg:col-span-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3  gap-10">
+        <div className="grid grid-cols-1 grid-rows-2 sm:grid-cols-2 xl:grid-cols-3  gap-10">
           {data?.items.map((plant) => (
             <div
               className="card card-compact w-96 bg-base-100 shadow-xl"
               key={plant.id}
             >
-              <figure>
-                <img
-                  src={plant.imageUrl}
-                  alt={plant.name}
-                  className="object-cover h-48 w-96"
-                />
-              </figure>
+              <Link to={`/plants/${plant.id}`}>
+                <figure>
+                  <img
+                    src={plant.imageUrl}
+                    alt={plant.name}
+                    className="object-cover h-48 w-96"
+                  />
+                </figure>
+              </Link>
               <div className="card-body">
                 <h2 className="card-title">{plant.name}</h2>
                 <div className="card-actions justify-end">
@@ -154,18 +169,30 @@ export const PlantListPage = () => {
             </div>
           ))}
         </div>
-        <div className="mt-20">
-          <div className="btn-group grid grid-cols-2 w-full">
-            <button
-              className={classNames("btn btn-outline", {
-                "btn-disabled": offset === 0,
-              })}
-            >
-              Previous page
-            </button>
-            <button className="btn btn-outline">Next</button>
+        {plantsCount > PAGINATION_PAGE_SIZE && (
+          <div className="mt-20">
+            <div className="btn-group grid grid-cols-2 w-full">
+              <button
+                className={classNames("btn btn-outline", {
+                  "btn-disabled": offset === 0,
+                })}
+                data-testid="prev-page-button"
+                onClick={previousPage}
+              >
+                Previous page
+              </button>
+              <button
+                className={classNames("btn btn-outline", {
+                  "btn-disabled": offset + PAGINATION_PAGE_SIZE > plantsCount,
+                })}
+                onClick={nextPage}
+                data-testid="next-page-button"
+              >
+                Next
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
