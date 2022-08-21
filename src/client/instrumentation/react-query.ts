@@ -22,6 +22,7 @@ import {
   MutateOptions,
 } from "@tanstack/react-query";
 import React, { useCallback, useRef } from "react";
+import { useTracedPage } from "./TracedPage";
 import { getTracer } from "./tracer";
 
 export const useTracedQuery = function <
@@ -36,6 +37,7 @@ export const useTracedQuery = function <
     | UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
   arg3?: UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>
 ) {
+  const tracedPage = useTracedPage();
   const { queryFn, queryKey, ...restOfArgs } = parseQueryArgs(arg1, arg2, arg3);
 
   return useQuery({
@@ -43,6 +45,7 @@ export const useTracedQuery = function <
     queryKey,
     queryFn: queryFn
       ? (...queryFnArgs) => {
+          const parentSpan = tracedPage.getPageSpan();
           const span = getTracer().startSpan(
             `query${queryFn.name ? `:${queryFn.name}` : ""}`,
             {
@@ -52,7 +55,8 @@ export const useTracedQuery = function <
                 "query.key": JSON.stringify(queryKey),
                 "location.url": window.location.href,
               },
-            }
+            },
+            parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined
           );
           let returnResult: ReturnType<typeof queryFn>;
           try {

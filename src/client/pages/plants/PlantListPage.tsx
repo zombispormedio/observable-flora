@@ -15,6 +15,8 @@ import {
   getPlantsCount,
 } from "../../services";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTracePageDataLoad } from "../../instrumentation/hooks";
+import { useTracedNavigation } from "../../instrumentation/TracedNavigation";
 
 export const PlantListPage = () => {
   const queryClient = useQueryClient();
@@ -22,7 +24,7 @@ export const PlantListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams({ offset: "0" });
   const offset = Number(searchParams.get("offset"));
 
-  const { data: countData } = useTracedQuery<{
+  const { data: countData, isLoading: isPlantsCountLoading } = useTracedQuery<{
     count: number;
   }>(["plants.count"], getPlantsCount);
 
@@ -34,7 +36,7 @@ export const PlantListPage = () => {
     }
   }, [offset, plantsCount]);
 
-  const { data } = useTracedQuery<{
+  const { data, isLoading: isPlantsLoading } = useTracedQuery<{
     items: { id: string; name: string; imageUrl: string }[];
   }>(
     ["plants", { offset, limit: PAGINATION_PAGE_SIZE }],
@@ -46,6 +48,9 @@ export const PlantListPage = () => {
         offset % PAGINATION_PAGE_SIZE === 0,
     }
   );
+
+  useTracePageDataLoad(isPlantsCountLoading || isPlantsLoading);
+  const tracedNavigation = useTracedNavigation();
 
   const { mutate: createPlantMutate } = useTracedMutation(createPlant, {
     onSuccess: () => {
@@ -143,7 +148,10 @@ export const PlantListPage = () => {
               className="card card-compact w-96 bg-base-100 shadow-xl"
               key={plant.id}
             >
-              <Link to={`/plants/${plant.id}`}>
+              <Link
+                to={`/plants/${plant.id}`}
+                onClick={() => tracedNavigation.setNavigationSpan()}
+              >
                 <figure>
                   <img
                     src={plant.imageUrl}
