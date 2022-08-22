@@ -17,6 +17,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { useTracePageDataLoad } from "../../instrumentation/hooks";
 import { useTracedNavigation } from "../../instrumentation/TracedNavigation";
+import { useTracedEventHandler } from "../../instrumentation/event-handlers";
 
 export const PlantListPage = () => {
   const queryClient = useQueryClient();
@@ -31,10 +32,11 @@ export const PlantListPage = () => {
   const plantsCount = countData?.count ?? 0;
 
   useEffect(() => {
-    if (offset > plantsCount || offset % PAGINATION_PAGE_SIZE !== 0) {
+    if (isPlantsCountLoading) return;
+    if (offset >= plantsCount || offset % PAGINATION_PAGE_SIZE !== 0) {
       setSearchParams({ offset: "0" });
     }
-  }, [offset, plantsCount]);
+  }, [offset, plantsCount, isPlantsCountLoading]);
 
   const { data, isLoading: isPlantsLoading } = useTracedQuery<{
     items: { id: string; name: string; imageUrl: string }[];
@@ -77,19 +79,19 @@ export const PlantListPage = () => {
     },
   });
 
-  const nextPage = () => {
+  const nextPage = useTracedEventHandler(() => {
     const nextOffset = offset + PAGINATION_PAGE_SIZE;
     if (nextOffset < plantsCount) {
       setSearchParams({ offset: String(offset + PAGINATION_PAGE_SIZE) });
     }
-  };
+  });
 
-  const previousPage = () => {
+  const previousPage = useTracedEventHandler(() => {
     const previousOffset = offset - PAGINATION_PAGE_SIZE;
     if (previousOffset >= 0) {
       setSearchParams({ offset: String(offset - PAGINATION_PAGE_SIZE) });
     }
-  };
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 m-5 mr-8 gap-10">
@@ -122,6 +124,7 @@ export const PlantListPage = () => {
               />
             </div>
             <button
+              type="submit"
               className="btn self-center mt-5"
               data-testid="add-new-plant"
               onClick={() => formik.handleSubmit()}
@@ -165,12 +168,10 @@ export const PlantListPage = () => {
                 <div className="card-actions justify-end">
                   <button
                     className="btn btn-error"
+                    data-testid="delete-plant-button"
                     onClick={() => deletePlantMutate(plant.id)}
                   >
-                    <TrashIcon
-                      className="h-5 w-5 text-white"
-                      data-testid="delete-plant-button"
-                    />
+                    <TrashIcon className="h-5 w-5 text-white" />
                   </button>
                 </div>
               </div>
