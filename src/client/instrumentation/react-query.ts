@@ -19,9 +19,8 @@ import {
   QueryFunction,
   UseMutateFunction,
   UseMutateAsyncFunction,
-  MutateOptions,
 } from "@tanstack/react-query";
-import React, { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useTracedPage } from "./TracedPage";
 import { getTracer } from "./tracer";
 

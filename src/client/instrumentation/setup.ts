@@ -1,4 +1,3 @@
-import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { FetchInstrumentation } from "@opentelemetry/instrumentation-fetch";
@@ -9,8 +8,6 @@ import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import { ZoneContextManager } from "@opentelemetry/context-zone";
 import { OPENTELEMETRY_AGENT_ENDPOINT } from "./config";
-
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
 const provider = new WebTracerProvider({
   resource: new Resource({
@@ -46,9 +43,7 @@ registerInstrumentations({
     }),
     new FetchInstrumentation({
       clearTimingResources: true,
-      propagateTraceHeaderCorsUrls: [
-        /.+/g, //Regex to match your backend urls. This should be updated.
-      ],
+      propagateTraceHeaderCorsUrls: [/.+/g],
     }),
   ],
 });
