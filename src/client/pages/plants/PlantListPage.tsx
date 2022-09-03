@@ -106,6 +106,11 @@ export const PlantListPage = () => {
     }
   });
 
+  console.log(countData?.count, offset);
+
+  const currentPage = Math.ceil(offset / PAGINATION_PAGE_SIZE) + 1;
+  const totalPages = Math.ceil((countData?.count || 0) / PAGINATION_PAGE_SIZE);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 m-5 mr-8 gap-10">
       <div className="lg:col-span-1">
@@ -152,7 +157,9 @@ export const PlantListPage = () => {
             <div className="stat">
               <div className="stat-title">Total Plants</div>
               <div className="stat-value">{countData?.count}</div>
-              <div className="stat-desc">Page 1 of 10</div>
+              <div className="stat-desc">
+                Page {currentPage} of {totalPages}
+              </div>
             </div>
           </div>
         </div>
