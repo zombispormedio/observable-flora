@@ -13,12 +13,25 @@ export function usePrevious<T>(value: T): T {
   return ref.current;
 }
 
-export const useTracePageDataLoad = (loading: boolean) => {
+export const useTracePageDataLoad = (
+  loading: boolean,
+  refetching?: boolean
+) => {
   const previousLoading = usePrevious(loading);
+  const previousRefetching = usePrevious(refetching);
   const tracedPage = useTracedPage();
+
   useEffect(() => {
     if (previousLoading && !loading) {
       tracedPage.endPageSpan();
     }
   }, [previousLoading, loading]);
+
+  useEffect(() => {
+    if (previousRefetching && !refetching) {
+      tracedPage.endPageSpan({
+        "data.refetch": true,
+      });
+    }
+  }, [previousRefetching, refetching]);
 };

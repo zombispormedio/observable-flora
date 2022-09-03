@@ -1,24 +1,34 @@
-import { Context, context, ContextAPI, Span, trace } from "@opentelemetry/api";
-import {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { Attributes, Context, context, Span, trace } from "@opentelemetry/api";
+import { createContext, ReactNode, useContext, useMemo, useRef } from "react";
 import { useTracedNavigation } from "./TracedNavigation";
 import { getTracer } from "./tracer";
 
 const TracedPageContext = createContext<{
   getPageSpan: () => Span | undefined;
-  endPageSpan: () => void;
+  endPageSpan: (attributes?: Attributes) => void;
 }>({
   getPageSpan: () => undefined,
   endPageSpan: () => {},
 });
 
 export const useTracedPage = () => useContext(TracedPageContext);
+
+const createPageSpan = (
+  name: string,
+  attributes?: Attributes,
+  parentSpan?: Span
+) =>
+  getTracer().startSpan(
+    name,
+    {
+      attributes: {
+        ...attributes,
+        component: "page",
+        "location.url": window.location.href,
+      },
+    },
+    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined
+  );
 
 export const TracedPage = ({
   page,
@@ -29,38 +39,48 @@ export const TracedPage = ({
 }) => {
   const tracedNavigation = useTracedNavigation();
   const pageSpanRef = useRef<Span | undefined>();
-  const createPageSpan = (parentContext?: Context) =>
-    getTracer().startSpan(
+  const firstLoad = useRef<boolean>(false);
+
+  if (!pageSpanRef.current && !firstLoad.current) {
+    pageSpanRef.current = createPageSpan(
       `pageDataLoad:${page}`,
       {
-        attributes: {
-          component: "page",
-          page,
-          "location.url": window.location.href,
-        },
+        page,
+        "data.status": "first_loading",
       },
-      parentContext
-    );
-  if (!pageSpanRef.current) {
-    pageSpanRef.current = createPageSpan(
       tracedNavigation.currentSpan
-        ? trace.setSpan(context.active(), tracedNavigation.currentSpan)
-        : undefined
     );
+    firstLoad.current = true;
   }
 
   const value = useMemo(
     () => ({
-      getPageSpan: () => pageSpanRef.current,
-      endPageSpan: () => {
+      getPageSpan: () => {
+        if (!pageSpanRef.current) {
+          pageSpanRef.current = createPageSpan(
+            `pageDataLoad:${page}`,
+            {
+              page,
+              "data.status": "loading",
+            },
+            tracedNavigation.currentSpan
+          );
+        }
+
+        return pageSpanRef.current;
+      },
+      endPageSpan: (attributes?: Attributes) => {
         if (pageSpanRef.current) {
+          if (attributes) {
+            pageSpanRef.current.setAttributes(attributes);
+          }
           pageSpanRef.current.end();
+          pageSpanRef.current = undefined;
           tracedNavigation.resetNavigationSpan();
-          pageSpanRef.current = createPageSpan();
         }
       },
     }),
-    []
+    [tracedNavigation]
   );
 
   return (

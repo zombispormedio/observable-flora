@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useFormik } from "formik";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { TrashIcon } from "@heroicons/react/solid";
 import {
   useTracedMutation,
@@ -25,7 +25,11 @@ export const PlantListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams({ offset: "0" });
   const offset = Number(searchParams.get("offset"));
 
-  const { data: countData, isLoading: isPlantsCountLoading } = useTracedQuery<{
+  const {
+    data: countData,
+    isLoading: isPlantsCountLoading,
+    isRefetching: isPlantsCountRefetching,
+  } = useTracedQuery<{
     count: number;
   }>(["plants.count"], getPlantsCount);
 
@@ -38,7 +42,11 @@ export const PlantListPage = () => {
     }
   }, [offset, plantsCount, isPlantsCountLoading]);
 
-  const { data, isLoading: isPlantsLoading } = useTracedQuery<{
+  const {
+    data,
+    isLoading: isPlantsLoading,
+    isRefetching: isPlantsRefetching,
+  } = useTracedQuery<{
     items: { id: string; name: string; imageUrl: string }[];
   }>(
     ["plants", { offset, limit: PAGINATION_PAGE_SIZE }],
@@ -51,7 +59,10 @@ export const PlantListPage = () => {
     }
   );
 
-  useTracePageDataLoad(isPlantsCountLoading || isPlantsLoading);
+  useTracePageDataLoad(
+    isPlantsCountLoading || isPlantsLoading,
+    isPlantsCountRefetching || isPlantsRefetching
+  );
   const tracedNavigation = useTracedNavigation();
 
   const { mutate: createPlantMutate } = useTracedMutation(createPlant, {
@@ -80,6 +91,7 @@ export const PlantListPage = () => {
   });
 
   const nextPage = useTracedEventHandler(() => {
+    tracedNavigation.setNavigationSpan();
     const nextOffset = offset + PAGINATION_PAGE_SIZE;
     if (nextOffset < plantsCount) {
       setSearchParams({ offset: String(offset + PAGINATION_PAGE_SIZE) });
@@ -87,6 +99,7 @@ export const PlantListPage = () => {
   });
 
   const previousPage = useTracedEventHandler(() => {
+    tracedNavigation.setNavigationSpan();
     const previousOffset = offset - PAGINATION_PAGE_SIZE;
     if (previousOffset >= 0) {
       setSearchParams({ offset: String(offset - PAGINATION_PAGE_SIZE) });
